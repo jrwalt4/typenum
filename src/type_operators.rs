@@ -579,6 +579,20 @@ pub trait Gcd<Rhs> {
     type Output;
 }
 
+/// A **type operator** that computes to lowest common denominator of `Self` and `Rhs`.
+///
+/// # Example
+///
+/// ```rust
+/// use typenum::{Lcd, Unsigned, U3, U4};
+///
+/// assert_eq!(<U3 as Lcd<U4>>::Output::to_i32(), 12);
+/// ```
+pub trait Lcd<Rhs>: Gcd<Rhs> {
+    /// The lowest common denominator.
+    type Output;
+}
+
 /// A **type operator** for taking a concrete integer value from a type.
 ///
 /// It returns arbitrary integer value without explicitly specifying the

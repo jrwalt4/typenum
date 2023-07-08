@@ -207,3 +207,11 @@ mod sealed {
 
     impl<N: Unsigned + NonZero, D: Unsigned + NonZero> Sealed for UFrac<N, D> {}
 }
+
+impl<A, B> Lcd<B> for A
+where
+    A: Gcd<B> + core::ops::Mul<PartialQuot<B, Gcf<A, B>>>,
+    B: PartialDiv<Gcf<A, B>>,
+{
+    type Output = Prod<A, PartialQuot<B, Gcf<A, B>>>;
+}
