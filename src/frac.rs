@@ -3,7 +3,11 @@
 use crate::{
     consts::*,
     marker_traits::{NonZero, Unsigned},
+    operator_aliases::{Gcf, Lcm, PartialQuot, Prod, Sum},
+    type_operators::{Gcd, Lcd, PartialDiv},
 };
+
+use core::ops::{Add, Mul};
 
 /// Type-level unsigned fraction.
 #[derive(Eq, PartialEq, Ord, PartialOrd, Clone, Copy, Hash, Debug, Default)]
@@ -80,4 +84,81 @@ impl UnsignedRational for UF0 {
     const F32: f32 = 0.0;
 
     const F64: f64 = 0.0;
+}
+
+// ---------------------------------------------------------------------------------------
+// Add
+
+impl Add<UF0> for UF0 {
+    type Output = UF0;
+
+    #[inline]
+    fn add(self, _rhs: UF0) -> Self::Output {
+        self
+    }
+}
+
+impl<N: Unsigned + NonZero, D: Unsigned + NonZero> Add<UF0> for UFrac<N, D> {
+    type Output = Self;
+
+    #[inline]
+    fn add(self, _rhs: UF0) -> Self::Output {
+        self
+    }
+}
+
+impl<N: Unsigned + NonZero, D: Unsigned + NonZero> Add<UFrac<N, D>> for UF0 {
+    type Output = UFrac<N, D>;
+
+    #[inline]
+    fn add(self, rhs: UFrac<N, D>) -> Self::Output {
+        rhs
+    }
+}
+
+impl<Nl, Dl, Nr, Dr> Add<UFrac<Nr, Dr>> for UFrac<Nl, Dl>
+where
+    Nl: Unsigned + NonZero,
+    Dl: Unsigned + NonZero + Gcd<Dr>,
+    Nr: Unsigned + NonZero,
+    Dr: Unsigned + NonZero,
+    Dl: Lcd<Dr>,
+    Gcf<Dl, Dr>: Unsigned + NonZero,
+    Lcm<Dl, Dr>: Unsigned + NonZero,
+    Nl: Mul<Dr>,
+    Prod<Nl, Dr>: PartialDiv<Gcf<Dl, Dr>>,
+    Nr: Mul<Dl>,
+    Prod<Nr, Dl>: PartialDiv<Gcf<Dl, Dr>>,
+    PartialQuot<Prod<Nl, Dr>, Gcf<Dl, Dr>>: Add<PartialQuot<Prod<Nr, Dl>, Gcf<Dl, Dr>>>,
+    Sum<PartialQuot<Prod<Nl, Dr>, Gcf<Dl, Dr>>, PartialQuot<Prod<Nr, Dl>, Gcf<Dl, Dr>>>:
+        Unsigned + NonZero,
+{
+    type Output = UFrac<
+        Sum<PartialQuot<Prod<Nl, Dr>, Gcf<Dl, Dr>>, PartialQuot<Prod<Nr, Dl>, Gcf<Dl, Dr>>>,
+        Lcm<Dl, Dr>,
+    >;
+    #[inline]
+    fn add(self, _rhs: UFrac<Nr, Dr>) -> Self::Output {
+        UFrac::new()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{
+        consts::*,
+        frac::{UFrac, UnsignedRational, UF0},
+        operator_aliases::Sum,
+    };
+
+    #[test]
+    fn unsigned_rational() {
+        assert_eq!(0.5_f32, UFrac::<U1, U2>::F32);
+    }
+
+    #[test]
+    fn ufrac_add() {
+        assert_eq!(0.5_f32, Sum::<UFrac::<U1, U2>, UF0>::F32);
+        assert_eq!(0.5_f32, Sum::<UF0, UFrac::<U1, U2>>::F32);
+    }
 }
