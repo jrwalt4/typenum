@@ -2,22 +2,27 @@
 
 use crate::{
     consts::*,
-    marker_traits::{NonZero, Unsigned},
-    operator_aliases::{Gcf, Lcm, PartialQuot, Prod, Sum},
+    marker_traits::{Bit, NonZero, Unsigned},
+    operator_aliases::{Diff, Gcf, Lcm, PartialQuot, Prod, Sum},
+    private::{PrivateSub, PrivateSubOut, Trim, TrimOut},
     type_operators::{Gcd, Lcd, PartialDiv},
+    uint::{UInt, UTerm},
 };
 
-use core::ops::{Add, Mul};
+use core::ops::{Add, Mul, Sub};
 
 /// Type-level unsigned fraction.
+///
+/// `N` should never be `NonZero`, but is allowed in signature so that UFrac<UTerm, D>
+/// can be allowed in intermediate calculation steps.
 #[derive(Eq, PartialEq, Ord, PartialOrd, Clone, Copy, Hash, Debug, Default)]
 #[cfg_attr(feature = "scale_info", derive(scale_info::TypeInfo))]
-pub struct UFrac<N: Unsigned + NonZero, D: Unsigned + NonZero> {
+pub struct UFrac<N: Unsigned, D: Unsigned + NonZero> {
     pub(crate) n: N,
     pub(crate) d: D,
 }
 
-impl<N: Unsigned + NonZero, D: Unsigned + NonZero> UFrac<N, D> {
+impl<N: Unsigned, D: Unsigned + NonZero> UFrac<N, D> {
     /// Instantiates a singleton representing this unsigned fraction.
     #[inline]
     pub fn new() -> UFrac<N, D> {
@@ -68,6 +73,7 @@ pub trait UnsignedRational {
     }
 }
 
+// `N` must be `NonZero`, otherwise it's UF0.
 impl<N: Unsigned + NonZero, D: Unsigned + NonZero> UnsignedRational for UFrac<N, D> {
     type Numer = N;
     type Denom = D;
@@ -84,6 +90,44 @@ impl UnsignedRational for UF0 {
     const F32: f32 = 0.0;
 
     const F64: f64 = 0.0;
+}
+
+// ---------------------------------------------------------------------------------------
+// Trim (a.k.a 'Simplify')
+
+impl Trim for UF0 {
+    type Output = UF0;
+
+    #[inline]
+    fn trim(self) -> Self::Output {
+        self
+    }
+}
+
+impl<D: Unsigned + NonZero> Trim for UFrac<UTerm, D> {
+    type Output = UF0;
+
+    #[inline]
+    fn trim(self) -> Self::Output {
+        UF0
+    }
+}
+
+impl<U: Unsigned, B: Bit, D: Unsigned + NonZero> Trim for UFrac<UInt<U, B>, D>
+where
+    UInt<U, B>: Gcd<D>,
+    UInt<U, B>: PartialDiv<Gcf<UInt<U, B>, D>>,
+    PartialQuot<UInt<U, B>, Gcf<UInt<U, B>, D>>: Unsigned,
+    D: PartialDiv<Gcf<UInt<U, B>, D>>,
+    PartialQuot<D, Gcf<UInt<U, B>, D>>: Unsigned + NonZero,
+{
+    type Output =
+        UFrac<PartialQuot<UInt<U, B>, Gcf<UInt<U, B>, D>>, PartialQuot<D, Gcf<UInt<U, B>, D>>>;
+
+    #[inline]
+    fn trim(self) -> Self::Output {
+        UFrac::new()
+    }
 }
 
 // ---------------------------------------------------------------------------------------
@@ -143,12 +187,76 @@ where
     }
 }
 
+// ---------------------------------------------------------------------------------------
+// Sub
+
+impl Sub for UF0 {
+    type Output = UF0;
+
+    #[inline]
+    fn sub(self, _rhs: Self) -> Self::Output {
+        self
+    }
+}
+
+impl<N: Unsigned, D: Unsigned + NonZero> Sub<UF0> for UFrac<N, D> {
+    type Output = Self;
+
+    #[inline]
+    fn sub(self, _rhs: UF0) -> Self::Output {
+        self
+    }
+}
+
+impl<Nl, Dl, Nr, Dr> Sub<UFrac<Nr, Dr>> for UFrac<Nl, Dl>
+where
+    Nl: Unsigned + NonZero,
+    Dl: Unsigned + NonZero,
+    Nr: Unsigned + NonZero,
+    Dr: Unsigned + NonZero,
+    UFrac<Nl, Dl>: PrivateSub<UFrac<Nr, Dr>>,
+    PrivateSubOut<UFrac<Nl, Dl>, UFrac<Nr, Dr>>: Trim,
+{
+    type Output = TrimOut<PrivateSubOut<UFrac<Nl, Dl>, UFrac<Nr, Dr>>>;
+
+    #[inline]
+    fn sub(self, rhs: UFrac<Nr, Dr>) -> Self::Output {
+        self.private_sub(rhs).trim()
+    }
+}
+
+impl<Nl, Dl, Nr, Dr> PrivateSub<UFrac<Nr, Dr>> for UFrac<Nl, Dl>
+where
+    Nl: Unsigned + NonZero,
+    Dl: Unsigned + NonZero + Gcd<Dr>,
+    Nr: Unsigned + NonZero,
+    Dr: Unsigned + NonZero,
+    Dl: Lcd<Dr>,
+    Gcf<Dl, Dr>: Unsigned + NonZero,
+    Lcm<Dl, Dr>: Unsigned + NonZero,
+    Nl: Mul<Dr>,
+    Prod<Nl, Dr>: PartialDiv<Gcf<Dl, Dr>>,
+    Nr: Mul<Dl>,
+    Prod<Nr, Dl>: PartialDiv<Gcf<Dl, Dr>>,
+    PartialQuot<Prod<Nl, Dr>, Gcf<Dl, Dr>>: Sub<PartialQuot<Prod<Nr, Dl>, Gcf<Dl, Dr>>>,
+    Diff<PartialQuot<Prod<Nl, Dr>, Gcf<Dl, Dr>>, PartialQuot<Prod<Nr, Dl>, Gcf<Dl, Dr>>>: Unsigned,
+{
+    type Output = UFrac<
+        Diff<PartialQuot<Prod<Nl, Dr>, Gcf<Dl, Dr>>, PartialQuot<Prod<Nr, Dl>, Gcf<Dl, Dr>>>,
+        Lcm<Dl, Dr>,
+    >;
+    #[inline]
+    fn private_sub(self, _rhs: UFrac<Nr, Dr>) -> Self::Output {
+        UFrac::new()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::{
         consts::*,
         frac::{UFrac, UnsignedRational, UF0},
-        operator_aliases::Sum,
+        operator_aliases::{Diff, Sum},
     };
 
     #[test]
@@ -160,5 +268,13 @@ mod tests {
     fn ufrac_add() {
         assert_eq!(0.5_f32, Sum::<UFrac::<U1, U2>, UF0>::F32);
         assert_eq!(0.5_f32, Sum::<UF0, UFrac::<U1, U2>>::F32);
+    }
+
+    #[test]
+    fn ufrac_sub() {
+        assert_eq!(0.25_f32, Diff::<UFrac::<U1, U2>, UFrac::<U1, U4>>::F32);
+        assert_eq!(0.0_f32, Diff::<UFrac::<U1, U2>, UFrac::<U1, U2>>::F32);
+        assert_eq!(0.5_f32, Diff::<UFrac::<U1, U2>, UF0>::F32);
+        assert_eq!(0.0_f32, Diff::<UF0, UF0>::F32);
     }
 }
