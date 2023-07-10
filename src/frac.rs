@@ -251,12 +251,61 @@ where
     }
 }
 
+// ---------------------------------------------------------------------------------------
+// Mul
+
+impl Mul for UF0 {
+    type Output = UF0;
+
+    #[inline]
+    fn mul(self, _rhs: Self) -> Self::Output {
+        self
+    }
+}
+
+impl<N: Unsigned, D: Unsigned + NonZero> Mul<UF0> for UFrac<N, D> {
+    type Output = UF0;
+
+    #[inline]
+    fn mul(self, rhs: UF0) -> Self::Output {
+        rhs
+    }
+}
+
+impl<N: Unsigned, D: Unsigned + NonZero> Mul<UFrac<N, D>> for UF0 {
+    type Output = UF0;
+
+    #[inline]
+    fn mul(self, _rhs: UFrac<N, D>) -> Self::Output {
+        self
+    }
+}
+
+impl<Nl, Dl, Nr, Dr> Mul<UFrac<Nr, Dr>> for UFrac<Nl, Dl>
+where
+    Nl: Unsigned + Mul<Nr>,
+    Dl: Unsigned + NonZero + Mul<Dr>,
+    Nr: Unsigned,
+    Dr: Unsigned + NonZero,
+    Prod<Nl, Nr>: Unsigned,
+    Prod<Dl, Dr>: Unsigned + NonZero,
+    UFrac<Prod<Nl, Nr>, Prod<Dl, Dr>>: Trim,
+{
+    type Output = TrimOut<UFrac<Prod<Nl, Nr>, Prod<Dl, Dr>>>;
+
+    #[inline]
+    fn mul(self, _rhs: UFrac<Nr, Dr>) -> Self::Output {
+        Trim::trim(UFrac::<Prod<Nl, Nr>, Prod<Dl, Dr>>::default())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::{
+        assert_type_eq,
         consts::*,
         frac::{UFrac, UnsignedRational, UF0},
-        operator_aliases::{Diff, Sum},
+        operator_aliases::{Diff, Prod, Sum},
     };
 
     #[test]
@@ -276,5 +325,15 @@ mod tests {
         assert_eq!(0.0_f32, Diff::<UFrac::<U1, U2>, UFrac::<U1, U2>>::F32);
         assert_eq!(0.5_f32, Diff::<UFrac::<U1, U2>, UF0>::F32);
         assert_eq!(0.0_f32, Diff::<UF0, UF0>::F32);
+    }
+
+    #[test]
+    fn ufrac_mul() {
+        assert_eq!(0.25_f32, Prod::<UFrac::<U1, U2>, UFrac::<U1, U2>>::F32);
+        assert_eq!(0.125_f32, Prod::<UFrac::<U1, U2>, UFrac::<U1, U4>>::F32);
+        assert_eq!(0.1_f32, Prod::<UFrac::<U2, U5>, UFrac::<U1, U4>>::F32);
+        assert_type_eq!(UFrac<U1, U10>, Prod<UFrac<U2, U5>, UFrac::<U1, U4>>);
+        assert_eq!(0_f32, Prod::<UFrac::<U1, U2>, UF0>::F32);
+        assert_eq!(0_f32, Prod::<UF0, UFrac::<U1, U2>>::F32);
     }
 }
