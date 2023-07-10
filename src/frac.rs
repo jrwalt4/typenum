@@ -2,7 +2,8 @@
 
 use crate::{
     consts::*,
-    marker_traits::{Bit, NonZero, Unsigned},
+    int::{NInt, PInt, Z0},
+    marker_traits::{Bit, Integer, NonZero, Unsigned},
     operator_aliases::{Diff, Gcf, Lcm, PartialQuot, Prod, Sum},
     private::{PrivateSub, PrivateSubOut, Trim, TrimOut},
     type_operators::{Gcd, Lcd, PartialDiv},
@@ -90,6 +91,75 @@ impl UnsignedRational for UF0 {
     const F32: f32 = 0.0;
 
     const F64: f64 = 0.0;
+}
+
+/// Signed rational
+pub trait Rational {
+    /// Signed numerator
+    type Numer: Integer;
+
+    /// Denomenator
+    type Denom: Unsigned + NonZero;
+
+    #[allow(missing_docs)]
+    const F32: f32;
+
+    #[allow(missing_docs)]
+    const F64: f64;
+
+    #[allow(missing_docs)]
+    #[inline]
+    fn to_f32() -> f32 {
+        Self::F32
+    }
+
+    #[allow(missing_docs)]
+    #[inline]
+    fn to_f64() -> f64 {
+        Self::F64
+    }
+}
+
+/// Positive fraction.
+#[derive(Eq, PartialEq, Ord, PartialOrd, Clone, Copy, Hash, Debug, Default)]
+#[cfg_attr(feature = "scale_info", derive(scale_info::TypeInfo))]
+pub struct PFrac<U: UnsignedRational>(U);
+
+impl<U: UnsignedRational> Rational for PFrac<U>
+where
+    U::Numer: NonZero,
+{
+    type Numer = PInt<U::Numer>;
+    type Denom = U::Denom;
+    const F32: f32 = U::F32;
+    const F64: f64 = U::F64;
+}
+
+/// Negative fraction.
+#[derive(Eq, PartialEq, Ord, PartialOrd, Clone, Copy, Hash, Debug, Default)]
+#[cfg_attr(feature = "scale_info", derive(scale_info::TypeInfo))]
+pub struct NFrac<U: UnsignedRational>(U);
+
+impl<U: UnsignedRational> Rational for NFrac<U>
+where
+    U::Numer: NonZero,
+{
+    type Numer = NInt<U::Numer>;
+    type Denom = U::Denom;
+    const F32: f32 = -1.0 * U::F32;
+    const F64: f64 = -1.0 * U::F64;
+}
+
+/// Signed zero fraction.
+#[derive(Eq, PartialEq, Ord, PartialOrd, Clone, Copy, Hash, Debug, Default)]
+#[cfg_attr(feature = "scale_info", derive(scale_info::TypeInfo))]
+pub struct F0;
+
+impl Rational for F0 {
+    type Numer = Z0;
+    type Denom = U1;
+    const F32: f32 = 0.0_f32;
+    const F64: f64 = 0.0_f64;
 }
 
 // ---------------------------------------------------------------------------------------
