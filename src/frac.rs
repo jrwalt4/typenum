@@ -9,7 +9,7 @@ use crate::{
     uint::{UInt, UTerm},
 };
 
-use core::ops::{Add, Mul, Sub};
+use core::ops::{Add, Div, Mul, Sub};
 
 /// Type-level unsigned fraction.
 ///
@@ -17,7 +17,7 @@ use core::ops::{Add, Mul, Sub};
 /// can be allowed in intermediate calculation steps.
 #[derive(Eq, PartialEq, Ord, PartialOrd, Clone, Copy, Hash, Debug, Default)]
 #[cfg_attr(feature = "scale_info", derive(scale_info::TypeInfo))]
-pub struct UFrac<N: Unsigned, D: Unsigned + NonZero> {
+pub struct UFrac<N: Unsigned, D: Unsigned + NonZero = U1> {
     pub(crate) n: N,
     pub(crate) d: D,
 }
@@ -299,13 +299,41 @@ where
     }
 }
 
+// ---------------------------------------------------------------------------------------
+// Div
+
+impl<N: Unsigned, D: Unsigned + NonZero> Div<UFrac<N, D>> for UF0 {
+    type Output = UF0;
+
+    #[inline]
+    fn div(self, _rhs: UFrac<N, D>) -> Self::Output {
+        self
+    }
+}
+
+impl<Nl, Dl, Nr, Dr> Div<UFrac<Nr, Dr>> for UFrac<Nl, Dl>
+where
+    Nl: Unsigned,
+    Dl: Unsigned + NonZero,
+    Nr: Unsigned + NonZero,
+    Dr: Unsigned + NonZero,
+    Self: Mul<UFrac<Dr, Nr>>,
+{
+    type Output = Prod<Self, UFrac<Dr, Nr>>;
+
+    #[inline]
+    fn div(self, _rhs: UFrac<Nr, Dr>) -> Self::Output {
+        self * UFrac::<Dr, Nr>::new()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::{
         assert_type_eq,
         consts::*,
         frac::{UFrac, UnsignedRational, UF0},
-        operator_aliases::{Diff, Prod, Sum},
+        operator_aliases::{Diff, Prod, Quot, Sum},
     };
 
     #[test]
@@ -335,5 +363,14 @@ mod tests {
         assert_type_eq!(UFrac<U1, U10>, Prod<UFrac<U2, U5>, UFrac::<U1, U4>>);
         assert_eq!(0_f32, Prod::<UFrac::<U1, U2>, UF0>::F32);
         assert_eq!(0_f32, Prod::<UF0, UFrac::<U1, U2>>::F32);
+    }
+
+    #[test]
+    fn ufrac_div() {
+        assert_eq!(1_f32, Quot::<UFrac::<U1, U2>, UFrac::<U1, U2>>::F32);
+        assert_eq!(0.25_f32, Quot::<UFrac::<U1, U2>, UFrac::<U2>>::F32);
+        assert_eq!(0.8_f32, Quot::<UFrac::<U2, U5>, UFrac::<U1, U2>>::F32);
+        assert_type_eq!(UFrac<U4, U5>, Quot<UFrac<U2, U5>, UFrac::<U2, U4>>);
+        assert_eq!(0_f32, Quot::<UF0, UFrac::<U1, U2>>::F32);
     }
 }
