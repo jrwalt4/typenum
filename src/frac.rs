@@ -4,10 +4,15 @@ use crate::{
     consts::*,
     int::{NInt, PInt, Z0},
     marker_traits::{Bit, Integer, NonZero, Unsigned},
-    operator_aliases::{Diff, Gcf, Lcm, PartialQuot, Prod, Sum},
-    private::{PrivateSub, PrivateSubOut, Trim, TrimOut},
-    type_operators::{Gcd, Lcd, PartialDiv},
+    operator_aliases::{Compare, Diff, Gcf, Lcm, PartialQuot, Prod, Sum},
+    private::{
+        Internal, InternalMarker, PrivateRationalAdd, PrivateRationalAddOut, PrivateSub,
+        PrivateSubOut, Trim, TrimOut,
+    },
+    sealed::Sealed,
+    type_operators::{Cmp, Gcd, Lcd, PartialDiv},
     uint::{UInt, UTerm},
+    Equal, Greater, Less,
 };
 
 use core::ops::{Add, Div, Mul, Sub};
@@ -45,7 +50,7 @@ impl UF0 {
 }
 
 /// Marker trait for unsigned rational numbers.
-pub trait UnsignedRational {
+pub trait UnsignedRational: Sealed + Copy + Default {
     /// The reduced numerator of a rational number.
     type Numer: Unsigned;
 
@@ -200,6 +205,86 @@ where
     }
 }
 
+impl Trim for F0 {
+    type Output = F0;
+
+    #[inline]
+    fn trim(self) -> Self::Output {
+        self
+    }
+}
+
+impl<U: UnsignedRational + Trim> Trim for PFrac<U>
+where
+    TrimOut<U>: UnsignedRational,
+{
+    type Output = PFrac<TrimOut<U>>;
+
+    #[inline]
+    fn trim(self) -> Self::Output {
+        PFrac::default()
+    }
+}
+
+impl<U: UnsignedRational + Trim> Trim for NFrac<U>
+where
+    TrimOut<U>: UnsignedRational,
+{
+    type Output = NFrac<TrimOut<U>>;
+
+    #[inline]
+    fn trim(self) -> Self::Output {
+        NFrac::default()
+    }
+}
+
+// ---------------------------------------------------------------------------------------
+// Cmp
+
+impl Cmp for UF0 {
+    type Output = Equal;
+
+    #[inline]
+    fn compare<IM: InternalMarker>(&self, _: &Self) -> Self::Output {
+        Equal
+    }
+}
+
+impl<N: Unsigned + NonZero, D: Unsigned + NonZero> Cmp<UFrac<N, D>> for UF0 {
+    type Output = Less;
+
+    #[inline]
+    fn compare<IM: InternalMarker>(&self, _: &UFrac<N, D>) -> Self::Output {
+        Less
+    }
+}
+
+impl<N: Unsigned + NonZero, D: Unsigned + NonZero> Cmp<UF0> for UFrac<N, D> {
+    type Output = Greater;
+
+    #[inline]
+    fn compare<IM: InternalMarker>(&self, _: &UF0) -> Self::Output {
+        Greater
+    }
+}
+
+impl<Nl, Dl, Nr, Dr> Cmp<UFrac<Nr, Dr>> for UFrac<Nl, Dl>
+where
+    Nl: Unsigned + NonZero + Mul<Dr>,
+    Dl: Unsigned + NonZero,
+    Nr: Unsigned + NonZero + Mul<Dl>,
+    Dr: Unsigned + NonZero,
+    Prod<Nl, Dr>: Cmp<Prod<Nr, Dl>>,
+    Compare<Prod<Nl, Dr>, Prod<Nr, Dl>>: Default,
+{
+    type Output = Compare<Prod<Nl, Dr>, Prod<Nr, Dl>>;
+
+    #[inline]
+    fn compare<IM: InternalMarker>(&self, _: &UFrac<Nr, Dr>) -> Self::Output {
+        Default::default()
+    }
+}
+
 // ---------------------------------------------------------------------------------------
 // Add
 
@@ -254,6 +339,147 @@ where
     #[inline]
     fn add(self, _rhs: UFrac<Nr, Dr>) -> Self::Output {
         UFrac::new()
+    }
+}
+
+impl Add for F0 {
+    type Output = F0;
+
+    #[inline]
+    fn add(self, _rhs: F0) -> Self::Output {
+        self
+    }
+}
+
+impl<U: UnsignedRational> Add<PFrac<U>> for F0 {
+    type Output = PFrac<U>;
+
+    #[inline]
+    fn add(self, rhs: PFrac<U>) -> Self::Output {
+        rhs
+    }
+}
+
+impl<U: UnsignedRational> Add<NFrac<U>> for F0 {
+    type Output = NFrac<U>;
+
+    #[inline]
+    fn add(self, rhs: NFrac<U>) -> Self::Output {
+        rhs
+    }
+}
+
+impl<U: UnsignedRational> Add<F0> for PFrac<U> {
+    type Output = PFrac<U>;
+
+    #[inline]
+    fn add(self, _: F0) -> Self::Output {
+        self
+    }
+}
+
+impl<U: UnsignedRational> Add<F0> for NFrac<U> {
+    type Output = NFrac<U>;
+
+    #[inline]
+    fn add(self, _: F0) -> Self::Output {
+        self
+    }
+}
+
+impl<Ul, Ur> Add<PFrac<Ur>> for PFrac<Ul>
+where
+    Ul: UnsignedRational + Add<Ur>,
+    Ur: UnsignedRational,
+    Sum<Ul, Ur>: UnsignedRational,
+{
+    type Output = PFrac<Sum<Ul, Ur>>;
+
+    #[inline]
+    fn add(self, rhs: PFrac<Ur>) -> Self::Output {
+        PFrac(self.0 + rhs.0)
+    }
+}
+
+impl<Ul, Ur> Add<NFrac<Ur>> for NFrac<Ul>
+where
+    Ul: UnsignedRational + Add<Ur>,
+    Ur: UnsignedRational,
+    Sum<Ul, Ur>: UnsignedRational,
+{
+    type Output = NFrac<Sum<Ul, Ur>>;
+
+    #[inline]
+    fn add(self, rhs: NFrac<Ur>) -> Self::Output {
+        NFrac(self.0 + rhs.0)
+    }
+}
+
+impl<Ul: UnsignedRational, Ur: UnsignedRational> Add<NFrac<Ur>> for PFrac<Ul>
+where
+    Ul: Cmp<Ur> + PrivateRationalAdd<Compare<Ul, Ur>, Ur>,
+{
+    type Output = PrivateRationalAddOut<Ul, Compare<Ul, Ur>, Ur>;
+
+    #[inline]
+    fn add(self, rhs: NFrac<Ur>) -> Self::Output {
+        let lhs = self.0;
+        let rhs = rhs.0;
+        let lhs_cmp_rhs = lhs.compare::<Internal>(&rhs);
+        lhs.private_rational_add(lhs_cmp_rhs, rhs)
+    }
+}
+
+impl<Ul: UnsignedRational, Ur: UnsignedRational> Add<PFrac<Ur>> for NFrac<Ul>
+where
+    Ur: Cmp<Ul> + PrivateRationalAdd<Compare<Ur, Ul>, Ul>,
+{
+    type Output = PrivateRationalAddOut<Ur, Compare<Ur, Ul>, Ul>;
+
+    #[inline]
+    fn add(self, rhs: PFrac<Ur>) -> Self::Output {
+        let lhs = self.0;
+        let rhs = rhs.0;
+        let rhs_cmp_lhs = rhs.compare::<Internal>(&lhs);
+        rhs.private_rational_add(rhs_cmp_lhs, lhs)
+    }
+}
+
+/// `P + N = 0` where `P == N`
+impl<N: UnsignedRational, P: UnsignedRational> PrivateRationalAdd<Equal, N> for P {
+    type Output = F0;
+
+    #[inline]
+    fn private_rational_add(self, _: Equal, _: N) -> Self::Output {
+        F0
+    }
+}
+
+/// `P + N = Positive` where `P > N`
+impl<N: UnsignedRational, P: UnsignedRational> PrivateRationalAdd<Greater, N> for P
+where
+    P: Sub<N>,
+    Diff<P, N>: UnsignedRational,
+{
+    type Output = PFrac<Diff<P, N>>;
+
+    #[inline]
+    fn private_rational_add(self, _: Greater, n: N) -> Self::Output {
+        PFrac(self - n)
+    }
+}
+
+/// `P + N = Negative` where `P < N`
+impl<N: UnsignedRational, P: UnsignedRational> PrivateRationalAdd<Less, N> for P
+where
+    N: Sub<P>,
+    Diff<N, P>: UnsignedRational,
+{
+    type Output = NFrac<Diff<N, P>>;
+
+    #[inline]
+    fn private_rational_add(self, _: Less, n: N) -> Self::Output {
+        NFrac(n - self)
     }
 }
 
@@ -402,7 +628,7 @@ mod tests {
     use crate::{
         assert_type_eq,
         consts::*,
-        frac::{UFrac, UnsignedRational, UF0},
+        frac::{NFrac, PFrac, Rational, UFrac, UnsignedRational, F0, UF0},
         operator_aliases::{Diff, Prod, Quot, Sum},
     };
 
@@ -442,5 +668,26 @@ mod tests {
         assert_eq!(0.8_f32, Quot::<UFrac::<U2, U5>, UFrac::<U1, U2>>::F32);
         assert_type_eq!(UFrac<U4, U5>, Quot<UFrac<U2, U5>, UFrac::<U2, U4>>);
         assert_eq!(0_f32, Quot::<UF0, UFrac::<U1, U2>>::F32);
+    }
+
+    #[test]
+    fn frac_add() {
+        assert_eq!(0_f32, Sum::<F0, F0>::F32);
+        assert_eq!(0.5_f32, Sum::<F0, PFrac<UFrac<U1, U2>>>::F32);
+        assert_eq!(0.5_f32, Sum::<PFrac<UFrac<U1, U2>>, F0>::F32);
+        assert_eq!(
+            1_f32,
+            Sum::<PFrac<UFrac<U1, U2>>, PFrac<UFrac<U1, U2>>>::F32
+        );
+        assert_eq!(
+            -2_f32,
+            Sum::<NFrac<UFrac<U3, U2>>, NFrac<UFrac<U1, U2>>>::F32
+        );
+        assert_eq!(
+            0_f32,
+            Sum::<PFrac<UFrac<U1, U2>>, NFrac<UFrac<U1, U2>>>::F32
+        );
+        assert_eq!(0.5_f32, Sum::<PFrac<UFrac<U3, U2>>, NFrac<UFrac<U1>>>::F32);
+        assert_eq!(-0.5_f32, Sum::<PFrac<UFrac<U1, U2>>, NFrac<UFrac<U1>>>::F32);
     }
 }

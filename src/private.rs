@@ -111,6 +111,16 @@ pub trait PrivateIntegerAdd<C, N> {
 }
 pub type PrivateIntegerAddOut<P, C, N> = <P as PrivateIntegerAdd<C, N>>::Output;
 
+/// Used for addition of signed rationals; `C = P.cmp(N)`
+/// Assumes `P = Self` is positive and `N` is negative
+/// where `P` and `N` are both passed as unsigned rationals
+pub trait PrivateRationalAdd<C, N> {
+    type Output;
+
+    fn private_rational_add(self, _: C, _: N) -> Self::Output;
+}
+pub type PrivateRationalAddOut<P, C, N> = <P as PrivateRationalAdd<C, N>>::Output;
+
 pub trait PrivatePow<Y, N> {
     type Output;
 

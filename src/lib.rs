@@ -96,7 +96,7 @@ pub mod array;
 
 pub use crate::{
     array::{ATerm, TArr},
-    frac::UFrac,
+    frac::{NFrac, PFrac, UFrac, F0, UF0},
     generated::consts,
     int::{NInt, PInt},
     marker_traits::*,
@@ -182,9 +182,11 @@ macro_rules! assert_type {
 
 mod sealed {
     use crate::{
-        ATerm, Bit, Equal, Greater, Less, NInt, NonZero, PInt, TArr, UFrac, UInt, UTerm, Unsigned,
-        B0, B1, Z0,
+        ATerm, Bit, Equal, Greater, Less, NInt, NonZero, PInt, TArr, UInt, UTerm, Unsigned, B0, B1,
+        Z0,
     };
+
+    use crate::frac::{UFrac, UF0};
 
     pub trait Sealed {}
 
@@ -205,7 +207,8 @@ mod sealed {
     impl Sealed for ATerm {}
     impl<V, A> Sealed for TArr<V, A> {}
 
-    impl<N: Unsigned + NonZero, D: Unsigned + NonZero> Sealed for UFrac<N, D> {}
+    impl<N: Unsigned, D: Unsigned + NonZero> Sealed for UFrac<N, D> {}
+    impl Sealed for UF0 {}
 }
 
 impl<A, B> Lcd<B> for A
