@@ -285,6 +285,87 @@ where
     }
 }
 
+impl Cmp for F0 {
+    type Output = Equal;
+
+    #[inline]
+    fn compare<IM: InternalMarker>(&self, _: &Self) -> Self::Output {
+        Equal
+    }
+}
+
+impl<N: Unsigned + NonZero, D: Unsigned + NonZero> Cmp<PFrac<UFrac<N, D>>> for F0 {
+    type Output = Less;
+
+    #[inline]
+    fn compare<IM: InternalMarker>(&self, _: &PFrac<UFrac<N, D>>) -> Self::Output {
+        Less
+    }
+}
+
+impl<N: Unsigned + NonZero, D: Unsigned + NonZero> Cmp<NFrac<UFrac<N, D>>> for F0 {
+    type Output = Greater;
+
+    #[inline]
+    fn compare<IM: InternalMarker>(&self, _: &NFrac<UFrac<N, D>>) -> Self::Output {
+        Greater
+    }
+}
+
+impl<N: Unsigned + NonZero, D: Unsigned + NonZero> Cmp<F0> for PFrac<UFrac<N, D>> {
+    type Output = Greater;
+
+    #[inline]
+    fn compare<IM: InternalMarker>(&self, _: &F0) -> Self::Output {
+        Greater
+    }
+}
+
+impl<N: Unsigned + NonZero, D: Unsigned + NonZero> Cmp<F0> for NFrac<UFrac<N, D>> {
+    type Output = Less;
+
+    #[inline]
+    fn compare<IM: InternalMarker>(&self, _: &F0) -> Self::Output {
+        Less
+    }
+}
+
+impl<Ul: UnsignedRational + Cmp<Ur>, Ur: UnsignedRational> Cmp<PFrac<Ur>> for PFrac<Ul> {
+    type Output = Compare<Ul, Ur>;
+
+    #[inline]
+    fn compare<IM: InternalMarker>(&self, rhs: &PFrac<Ur>) -> Self::Output {
+        self.0.compare::<IM>(&rhs.0)
+    }
+}
+
+impl<Ul: UnsignedRational, Ur: UnsignedRational> Cmp<NFrac<Ur>> for PFrac<Ul> {
+    type Output = Greater;
+
+    #[inline]
+    fn compare<IM: InternalMarker>(&self, _: &NFrac<Ur>) -> Self::Output {
+        Greater
+    }
+}
+
+impl<Ul: UnsignedRational, Ur: UnsignedRational> Cmp<PFrac<Ur>> for NFrac<Ul> {
+    type Output = Less;
+
+    #[inline]
+    fn compare<IM: InternalMarker>(&self, _: &PFrac<Ur>) -> Self::Output {
+        Less
+    }
+}
+
+impl<Ul: UnsignedRational, Ur: UnsignedRational + Cmp<Ul>> Cmp<NFrac<Ur>> for NFrac<Ul> {
+    type Output = Compare<Ur, Ul>;
+
+    #[inline]
+    fn compare<IM: InternalMarker>(&self, rhs: &NFrac<Ur>) -> Self::Output {
+        rhs.0.compare::<IM>(&self.0)
+    }
+}
+
 // ---------------------------------------------------------------------------------------
 // Add
 
