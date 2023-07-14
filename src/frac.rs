@@ -168,6 +168,54 @@ impl Rational for F0 {
 }
 
 // ---------------------------------------------------------------------------------------
+// IntoRational
+
+/// Convert another type into a [`Rational`].
+pub trait IntoRational {
+    #[allow(missing_docs)]
+    type Output: Rational;
+
+    #[allow(missing_docs)]
+    fn into_rational(self) -> Self::Output;
+}
+
+/// Operator alias for [`IntoRational`].
+pub type ToRational<U> = <U as IntoRational>::Output;
+
+impl IntoRational for Z0 {
+    type Output = F0;
+
+    #[inline]
+    fn into_rational(self) -> Self::Output {
+        F0
+    }
+}
+
+impl<U: Unsigned + NonZero> IntoRational for PInt<U> {
+    type Output = PFrac<UFrac<U>>;
+
+    #[inline]
+    fn into_rational(self) -> Self::Output {
+        PFrac(UFrac {
+            n: self.n,
+            d: U1::new(),
+        })
+    }
+}
+
+impl<U: Unsigned + NonZero> IntoRational for NInt<U> {
+    type Output = NFrac<UFrac<U>>;
+
+    #[inline]
+    fn into_rational(self) -> Self::Output {
+        NFrac(UFrac {
+            n: self.n,
+            d: U1::new(),
+        })
+    }
+}
+
+// ---------------------------------------------------------------------------------------
 // Trim (a.k.a 'Simplify')
 
 impl Trim for UF0 {
@@ -969,13 +1017,19 @@ mod tests {
     use crate::{
         assert_type_eq,
         consts::*,
-        frac::{NFrac, PFrac, Rational, UFrac, UnsignedRational, F0, UF0},
+        frac::{NFrac, PFrac, Rational, ToRational, UFrac, UnsignedRational, F0, UF0},
         operator_aliases::{Diff, Prod, Quot, Sum},
     };
 
     #[test]
     fn unsigned_rational() {
         assert_eq!(0.5_f32, UFrac::<U1, U2>::F32);
+    }
+
+    #[test]
+    fn into_rational() {
+        assert_type_eq!(PFrac<UFrac<U1>>, ToRational<P1>);
+        assert_type_eq!(NFrac<UFrac<U3>>, ToRational<N3>);
     }
 
     #[test]
