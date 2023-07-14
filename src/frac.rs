@@ -628,6 +628,107 @@ where
     }
 }
 
+impl Sub for F0 {
+    type Output = F0;
+
+    #[inline]
+    fn sub(self, _: F0) -> Self::Output {
+        self
+    }
+}
+
+impl<U: UnsignedRational> Sub<PFrac<U>> for F0 {
+    type Output = NFrac<U>;
+
+    #[inline]
+    fn sub(self, rhs: PFrac<U>) -> Self::Output {
+        NFrac(rhs.0)
+    }
+}
+
+impl<U: UnsignedRational> Sub<NFrac<U>> for F0 {
+    type Output = PFrac<U>;
+
+    #[inline]
+    fn sub(self, rhs: NFrac<U>) -> Self::Output {
+        PFrac(rhs.0)
+    }
+}
+
+impl<U: UnsignedRational> Sub<F0> for PFrac<U> {
+    type Output = PFrac<U>;
+
+    #[inline]
+    fn sub(self, _: F0) -> Self::Output {
+        self
+    }
+}
+
+impl<U: UnsignedRational> Sub<F0> for NFrac<U> {
+    type Output = NFrac<U>;
+
+    #[inline]
+    fn sub(self, _: F0) -> Self::Output {
+        self
+    }
+}
+
+/// Same as PFrac<Ul> + NFrac<Ur>
+impl<Ul: UnsignedRational, Ur: UnsignedRational> Sub<PFrac<Ur>> for PFrac<Ul>
+where
+    Ul: Cmp<Ur> + PrivateRationalAdd<Compare<Ul, Ur>, Ur>,
+{
+    type Output = PrivateRationalAddOut<Ul, Compare<Ul, Ur>, Ur>;
+
+    #[inline]
+    fn sub(self, rhs: PFrac<Ur>) -> Self::Output {
+        let lhs = self.0;
+        let rhs = rhs.0;
+        let lhs_cmp_rhs = lhs.compare::<Internal>(&rhs);
+        lhs.private_rational_add(lhs_cmp_rhs, rhs)
+    }
+}
+
+/// Same as NFrac<Ul> + PFrac<Ur>, which is just swapped impl from above
+impl<Ul: UnsignedRational, Ur: UnsignedRational> Sub<NFrac<Ur>> for NFrac<Ul>
+where
+    Ur: Cmp<Ul> + PrivateRationalAdd<Compare<Ur, Ul>, Ul>,
+{
+    type Output = PrivateRationalAddOut<Ur, Compare<Ur, Ul>, Ul>;
+
+    #[inline]
+    fn sub(self, rhs: NFrac<Ur>) -> Self::Output {
+        let lhs = self.0;
+        let rhs = rhs.0;
+        let rhs_cmp_lhs = rhs.compare::<Internal>(&lhs);
+        rhs.private_rational_add(rhs_cmp_lhs, lhs)
+    }
+}
+
+impl<Ul: UnsignedRational + Add<Ur>, Ur: UnsignedRational> Sub<NFrac<Ur>> for PFrac<Ul>
+where
+    Sum<Ul, Ur>: UnsignedRational,
+{
+    type Output = PFrac<Sum<Ul, Ur>>;
+
+    #[inline]
+    fn sub(self, rhs: NFrac<Ur>) -> Self::Output {
+        PFrac(self.0 + rhs.0)
+    }
+}
+
+impl<Ul: UnsignedRational + Add<Ur>, Ur: UnsignedRational> Sub<PFrac<Ur>> for NFrac<Ul>
+where
+    Sum<Ul, Ur>: UnsignedRational,
+{
+    type Output = NFrac<Sum<Ul, Ur>>;
+
+    #[inline]
+    fn sub(self, rhs: PFrac<Ur>) -> Self::Output {
+        NFrac(self.0 + rhs.0)
+    }
+}
+
 // ---------------------------------------------------------------------------------------
 // Mul
 
@@ -770,5 +871,30 @@ mod tests {
         );
         assert_eq!(0.5_f32, Sum::<PFrac<UFrac<U3, U2>>, NFrac<UFrac<U1>>>::F32);
         assert_eq!(-0.5_f32, Sum::<PFrac<UFrac<U1, U2>>, NFrac<UFrac<U1>>>::F32);
+    }
+
+    #[test]
+    fn frac_sub() {
+        assert_eq!(0_f32, Diff::<F0, F0>::F32);
+        assert_eq!(-0.5_f32, Diff::<F0, PFrac<UFrac<U1, U2>>>::F32);
+        assert_eq!(0.5_f32, Diff::<PFrac<UFrac<U1, U2>>, F0>::F32);
+        assert_eq!(-0.5_f32, Diff::<NFrac<UFrac<U1, U2>>, F0>::F32);
+        assert_eq!(
+            0.25_f32,
+            Diff::<PFrac<UFrac<U1, U2>>, PFrac<UFrac<U1, U4>>>::F32
+        );
+        assert_eq!(
+            -1_f32,
+            Diff::<NFrac<UFrac<U3, U2>>, NFrac<UFrac<U1, U2>>>::F32
+        );
+        assert_eq!(
+            1_f32,
+            Diff::<PFrac<UFrac<U1, U2>>, NFrac<UFrac<U1, U2>>>::F32
+        );
+        assert_eq!(
+            -2.5_f32,
+            Diff::<NFrac<UFrac<U3, U2>>, PFrac<UFrac<U1>>>::F32
+        );
+        assert_eq!(0.5_f32, Diff::<NFrac<UFrac<U1, U2>>, NFrac<UFrac<U1>>>::F32);
     }
 }
