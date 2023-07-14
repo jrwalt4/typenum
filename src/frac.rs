@@ -777,6 +777,99 @@ where
     }
 }
 
+impl Mul for F0 {
+    type Output = F0;
+
+    #[inline]
+    fn mul(self, _: F0) -> Self::Output {
+        self
+    }
+}
+
+impl<U: UnsignedRational> Mul<PFrac<U>> for F0 {
+    type Output = F0;
+
+    #[inline]
+    fn mul(self, _: PFrac<U>) -> Self::Output {
+        self
+    }
+}
+
+impl<U: UnsignedRational> Mul<NFrac<U>> for F0 {
+    type Output = F0;
+
+    #[inline]
+    fn mul(self, _: NFrac<U>) -> Self::Output {
+        self
+    }
+}
+
+impl<U: UnsignedRational> Mul<F0> for NFrac<U> {
+    type Output = F0;
+
+    #[inline]
+    fn mul(self, rhs: F0) -> Self::Output {
+        rhs
+    }
+}
+
+impl<U: UnsignedRational> Mul<F0> for PFrac<U> {
+    type Output = F0;
+
+    #[inline]
+    fn mul(self, rhs: F0) -> Self::Output {
+        rhs
+    }
+}
+
+impl<Ul: UnsignedRational + Mul<Ur>, Ur: UnsignedRational> Mul<PFrac<Ur>> for PFrac<Ul>
+where
+    Prod<Ul, Ur>: UnsignedRational,
+{
+    type Output = PFrac<Prod<Ul, Ur>>;
+
+    #[inline]
+    fn mul(self, rhs: PFrac<Ur>) -> Self::Output {
+        PFrac(self.0 * rhs.0)
+    }
+}
+
+impl<Ul: UnsignedRational + Mul<Ur>, Ur: UnsignedRational> Mul<NFrac<Ur>> for NFrac<Ul>
+where
+    Prod<Ul, Ur>: UnsignedRational,
+{
+    type Output = PFrac<Prod<Ul, Ur>>;
+
+    #[inline]
+    fn mul(self, rhs: NFrac<Ur>) -> Self::Output {
+        PFrac(self.0 * rhs.0)
+    }
+}
+
+impl<Ul: UnsignedRational + Mul<Ur>, Ur: UnsignedRational> Mul<NFrac<Ur>> for PFrac<Ul>
+where
+    Prod<Ul, Ur>: UnsignedRational,
+{
+    type Output = NFrac<Prod<Ul, Ur>>;
+
+    #[inline]
+    fn mul(self, rhs: NFrac<Ur>) -> Self::Output {
+        NFrac(self.0 * rhs.0)
+    }
+}
+
+impl<Ul: UnsignedRational + Mul<Ur>, Ur: UnsignedRational> Mul<PFrac<Ur>> for NFrac<Ul>
+where
+    Prod<Ul, Ur>: UnsignedRational,
+{
+    type Output = NFrac<Prod<Ul, Ur>>;
+
+    #[inline]
+    fn mul(self, rhs: PFrac<Ur>) -> Self::Output {
+        NFrac(self.0 * rhs.0)
+    }
+}
+
 // ---------------------------------------------------------------------------------------
 // Div
 
@@ -896,5 +989,27 @@ mod tests {
             Diff::<NFrac<UFrac<U3, U2>>, PFrac<UFrac<U1>>>::F32
         );
         assert_eq!(0.5_f32, Diff::<NFrac<UFrac<U1, U2>>, NFrac<UFrac<U1>>>::F32);
+    }
+
+    #[test]
+    fn frac_mul() {
+        assert_eq!(
+            0.25_f32,
+            Prod::<PFrac<UFrac<U1, U2>>, PFrac<UFrac<U1, U2>>>::F32
+        );
+        assert_eq!(
+            0.125_f32,
+            Prod::<PFrac<UFrac<U1, U2>>, PFrac<UFrac<U1, U4>>>::F32
+        );
+        assert_eq!(
+            -0.1_f32,
+            Prod::<NFrac<UFrac<U2, U5>>, PFrac<UFrac<U1, U4>>>::F32
+        );
+        assert_type_eq!(
+            NFrac<UFrac<U1, U10>>,
+            Prod<PFrac<UFrac<U2, U5>>, NFrac<UFrac<U1, U4>>>
+        );
+        assert_eq!(0_f32, Prod::<PFrac<UFrac<U1, U2>>, F0>::F32);
+        assert_eq!(0_f32, Prod::<F0, PFrac<UFrac<U1, U2>>>::F32);
     }
 }
