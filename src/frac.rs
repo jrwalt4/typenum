@@ -4,7 +4,7 @@ use crate::{
     consts::*,
     int::{NInt, PInt, Z0},
     marker_traits::{Bit, Integer, NonZero, Unsigned},
-    operator_aliases::{Compare, Diff, Gcf, Lcm, PartialQuot, Prod, Sum},
+    operator_aliases::{Compare, Diff, Gcf, Lcm, PartialQuot, Prod, Quot, Sum},
     private::{
         Internal, InternalMarker, PrivateRationalAdd, PrivateRationalAddOut, PrivateSub,
         PrivateSubOut, Trim, TrimOut,
@@ -898,6 +898,72 @@ where
     }
 }
 
+impl<U: UnsignedRational> Div<PFrac<U>> for F0 {
+    type Output = F0;
+
+    #[inline]
+    fn div(self, _: PFrac<U>) -> Self::Output {
+        self
+    }
+}
+
+impl<U: UnsignedRational> Div<NFrac<U>> for F0 {
+    type Output = F0;
+
+    #[inline]
+    fn div(self, _: NFrac<U>) -> Self::Output {
+        self
+    }
+}
+
+impl<Ul: UnsignedRational + Div<Ur>, Ur: UnsignedRational> Div<PFrac<Ur>> for PFrac<Ul>
+where
+    Quot<Ul, Ur>: UnsignedRational,
+{
+    type Output = PFrac<Quot<Ul, Ur>>;
+
+    #[inline]
+    fn div(self, rhs: PFrac<Ur>) -> Self::Output {
+        PFrac(self.0 / rhs.0)
+    }
+}
+
+impl<Ul: UnsignedRational + Div<Ur>, Ur: UnsignedRational> Div<NFrac<Ur>> for NFrac<Ul>
+where
+    Quot<Ul, Ur>: UnsignedRational,
+{
+    type Output = PFrac<Quot<Ul, Ur>>;
+
+    #[inline]
+    fn div(self, rhs: NFrac<Ur>) -> Self::Output {
+        PFrac(self.0 / rhs.0)
+    }
+}
+
+impl<Ul: UnsignedRational + Div<Ur>, Ur: UnsignedRational> Div<NFrac<Ur>> for PFrac<Ul>
+where
+    Quot<Ul, Ur>: UnsignedRational,
+{
+    type Output = NFrac<Quot<Ul, Ur>>;
+
+    #[inline]
+    fn div(self, rhs: NFrac<Ur>) -> Self::Output {
+        NFrac(self.0 / rhs.0)
+    }
+}
+
+impl<Ul: UnsignedRational + Div<Ur>, Ur: UnsignedRational> Div<PFrac<Ur>> for NFrac<Ul>
+where
+    Quot<Ul, Ur>: UnsignedRational,
+{
+    type Output = NFrac<Quot<Ul, Ur>>;
+
+    #[inline]
+    fn div(self, rhs: PFrac<Ur>) -> Self::Output {
+        NFrac(self.0 / rhs.0)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::{
@@ -1011,5 +1077,27 @@ mod tests {
         );
         assert_eq!(0_f32, Prod::<PFrac<UFrac<U1, U2>>, F0>::F32);
         assert_eq!(0_f32, Prod::<F0, PFrac<UFrac<U1, U2>>>::F32);
+    }
+
+    #[test]
+    fn frac_div() {
+        assert_eq!(
+            1_f32,
+            Quot::<PFrac<UFrac<U1, U2>>, PFrac<UFrac<U1, U2>>>::F32
+        );
+        assert_eq!(
+            -0.25_f32,
+            Quot::<PFrac<UFrac<U1, U2>>, NFrac<UFrac<U2>>>::F32
+        );
+        assert_eq!(
+            -0.8_f32,
+            Quot::<NFrac<UFrac<U2, U5>>, PFrac<UFrac<U1, U2>>>::F32
+        );
+        assert_type_eq!(
+            NFrac<UFrac<U4, U5>>,
+            Quot<NFrac<UFrac<U2, U5>>, PFrac<UFrac<U2, U4>>>
+        );
+        assert_eq!(0_f32, Quot::<F0, PFrac<UFrac<U1, U2>>>::F32);
+        assert_eq!(0_f32, Quot::<F0, NFrac<UFrac<U1, U2>>>::F32);
     }
 }
