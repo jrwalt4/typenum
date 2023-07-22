@@ -604,3 +604,16 @@ pub trait ToInt<T> {
     /// The concrete value for the type. Can be used in `const` contexts.
     const INT: T;
 }
+
+/// Convert another type into a [`Rational`].
+///
+/// [`Unsigned`] types become [`UnsignedRational`](crate::UnsignedRational)'s,
+/// [`Integer`](crate::Integer) types become [`Rational`](crate::Rational)'s.
+#[cfg(feature = "rational")]
+pub trait IntoRational {
+    #[allow(missing_docs)]
+    type Output: crate::Rational;
+
+    #[allow(missing_docs)]
+    fn into_rational(self) -> Self::Output;
+}

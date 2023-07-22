@@ -187,3 +187,63 @@ pub trait TypeArray: Sealed {}
 /// only_p2::<P1023>();
 /// ```
 pub trait PowerOfTwo: Sealed {}
+
+/// The **marker-trait** for type-level unsigned rational numbers,
+/// like an unsigned f32 (if such a thing existed).
+#[cfg(feature = "rational")]
+pub trait UnsignedRational: Sealed + Copy + Default + 'static {
+    /// The reduced numerator of a rational number.
+    type Numer: Unsigned;
+
+    /// The reduced denominator of a rational number.
+    ///
+    /// Could possibly allow for Zero denominator in the future
+    /// to support +/- Infinity.
+    type Denom: Unsigned + NonZero;
+
+    /// The 32-bit floating point representation of this rational number.
+    const F32: f32;
+
+    /// The 64-bit floating point representation of this rational number.
+    const F64: f64;
+
+    #[allow(missing_docs)]
+    #[inline]
+    fn to_f32() -> f32 {
+        Self::F32
+    }
+
+    #[allow(missing_docs)]
+    #[inline]
+    fn to_f64() -> f64 {
+        Self::F64
+    }
+}
+
+/// The **marker-trait** for signed rational. Works like an f32/f64.
+#[cfg(feature = "rational")]
+pub trait Rational: Sealed + Copy + Default + 'static {
+    /// Signed numerator
+    type Numer: Integer;
+
+    /// Denomenator
+    type Denom: Unsigned + NonZero;
+
+    #[allow(missing_docs)]
+    const F32: f32;
+
+    #[allow(missing_docs)]
+    const F64: f64;
+
+    #[allow(missing_docs)]
+    #[inline]
+    fn to_f32() -> f32 {
+        Self::F32
+    }
+
+    #[allow(missing_docs)]
+    #[inline]
+    fn to_f64() -> f64 {
+        Self::F64
+    }
+}

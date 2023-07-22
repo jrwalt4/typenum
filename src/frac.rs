@@ -3,14 +3,13 @@
 use crate::{
     consts::*,
     int::{NInt, PInt, Z0},
-    marker_traits::{Bit, Integer, NonZero, Unsigned},
+    marker_traits::{Bit, NonZero, Rational, Unsigned, UnsignedRational},
     operator_aliases::{Compare, Diff, Gcf, Lcm, PartialQuot, Prod, Quot, Sum},
     private::{
         Internal, InternalMarker, PrivateRationalAdd, PrivateRationalAddOut, PrivateSub,
         PrivateSubOut, Trim, TrimOut,
     },
-    sealed::Sealed,
-    type_operators::{Cmp, Gcd, Lcd, PartialDiv},
+    type_operators::{Cmp, Gcd, IntoRational, Lcd, PartialDiv},
     uint::{UInt, UTerm},
     Equal, Greater, Less,
 };
@@ -49,36 +48,6 @@ impl UF0 {
     }
 }
 
-/// Marker trait for unsigned rational numbers.
-pub trait UnsignedRational: Sealed + Copy + Default {
-    /// The reduced numerator of a rational number.
-    type Numer: Unsigned;
-
-    /// The reduced denominator of a rational number.
-    ///
-    /// Could possibly allow for Zero denominator in the future
-    /// to support +/- Infinity.
-    type Denom: Unsigned + NonZero;
-
-    /// The 32-bit floating point representation of this rational number.
-    const F32: f32;
-
-    /// The 64-bit floating point representation of this rational number.
-    const F64: f64;
-
-    #[allow(missing_docs)]
-    #[inline]
-    fn to_f32() -> f32 {
-        Self::F32
-    }
-
-    #[allow(missing_docs)]
-    #[inline]
-    fn to_f64() -> f64 {
-        Self::F64
-    }
-}
-
 // `N` must be `NonZero`, otherwise it's UF0.
 impl<N: Unsigned + NonZero, D: Unsigned + NonZero> UnsignedRational for UFrac<N, D> {
     type Numer = N;
@@ -96,33 +65,6 @@ impl UnsignedRational for UF0 {
     const F32: f32 = 0.0;
 
     const F64: f64 = 0.0;
-}
-
-/// Signed rational
-pub trait Rational {
-    /// Signed numerator
-    type Numer: Integer;
-
-    /// Denomenator
-    type Denom: Unsigned + NonZero;
-
-    #[allow(missing_docs)]
-    const F32: f32;
-
-    #[allow(missing_docs)]
-    const F64: f64;
-
-    #[allow(missing_docs)]
-    #[inline]
-    fn to_f32() -> f32 {
-        Self::F32
-    }
-
-    #[allow(missing_docs)]
-    #[inline]
-    fn to_f64() -> f64 {
-        Self::F64
-    }
 }
 
 /// Positive fraction.
@@ -169,18 +111,6 @@ impl Rational for F0 {
 
 // ---------------------------------------------------------------------------------------
 // IntoRational
-
-/// Convert another type into a [`Rational`].
-pub trait IntoRational {
-    #[allow(missing_docs)]
-    type Output: Rational;
-
-    #[allow(missing_docs)]
-    fn into_rational(self) -> Self::Output;
-}
-
-/// Operator alias for [`IntoRational`].
-pub type ToRational<U> = <U as IntoRational>::Output;
 
 impl IntoRational for Z0 {
     type Output = F0;
@@ -1017,8 +947,8 @@ mod tests {
     use crate::{
         assert_type_eq,
         consts::*,
-        frac::{NFrac, PFrac, Rational, ToRational, UFrac, UnsignedRational, F0, UF0},
-        operator_aliases::{Diff, Prod, Quot, Sum},
+        frac::{NFrac, PFrac, Rational, UFrac, UnsignedRational, F0, UF0},
+        operator_aliases::{Diff, Prod, Quot, Sum, ToRational},
     };
 
     #[test]

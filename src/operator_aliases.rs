@@ -110,3 +110,6 @@ pub type LeEq<A, B> = <A as IsLessOrEqual<B>>::Output;
 pub type NotEq<A, B> = <A as IsNotEqual<B>>::Output;
 /// Alias for the associated type of `Logarithm2`: `Log2<A> = <A as Logarithm2>::Output`
 pub type Log2<A> = <A as Logarithm2>::Output;
+/// Alias for the associated type of [`IntoRational`]: `ToRational<U> = <U as IntoRational>::Output`
+#[cfg(feature = "rational")]
+pub type ToRational<U> = <U as crate::IntoRational>::Output;

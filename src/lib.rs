@@ -84,6 +84,7 @@ mod generated {
 }
 
 pub mod bit;
+#[cfg(feature = "rational")]
 pub mod frac;
 pub mod int;
 pub mod marker_traits;
@@ -96,7 +97,6 @@ pub mod array;
 
 pub use crate::{
     array::{ATerm, TArr},
-    frac::{NFrac, PFrac, UFrac, F0, UF0},
     generated::consts,
     int::{NInt, PInt},
     marker_traits::*,
@@ -104,6 +104,9 @@ pub use crate::{
     type_operators::*,
     uint::{UInt, UTerm},
 };
+
+#[cfg(feature = "rational")]
+pub use frac::{NFrac, PFrac, UFrac, F0, UF0};
 
 #[doc(no_inline)]
 #[rustfmt::skip]
@@ -186,7 +189,8 @@ mod sealed {
         Z0,
     };
 
-    use crate::frac::{UFrac, UF0};
+    #[cfg(feature = "rational")]
+    use crate::{NFrac, PFrac, UFrac, UnsignedRational, F0, UF0};
 
     pub trait Sealed {}
 
@@ -207,10 +211,23 @@ mod sealed {
     impl Sealed for ATerm {}
     impl<V, A> Sealed for TArr<V, A> {}
 
+    #[cfg(feature = "rational")]
     impl<N: Unsigned, D: Unsigned + NonZero> Sealed for UFrac<N, D> {}
+
+    #[cfg(feature = "rational")]
     impl Sealed for UF0 {}
+
+    #[cfg(feature = "rational")]
+    impl Sealed for F0 {}
+
+    #[cfg(feature = "rational")]
+    impl<U: UnsignedRational> Sealed for PFrac<U> {}
+
+    #[cfg(feature = "rational")]
+    impl<U: UnsignedRational> Sealed for NFrac<U> {}
 }
 
+/// Lcd(A,B) = ( A * B ) / Gcf(A,B)
 impl<A, B> Lcd<B> for A
 where
     A: Gcd<B> + core::ops::Mul<PartialQuot<B, Gcf<A, B>>>,
