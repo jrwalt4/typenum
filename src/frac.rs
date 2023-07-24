@@ -4,12 +4,12 @@ use crate::{
     consts::*,
     int::{NInt, PInt, Z0},
     marker_traits::{Bit, NonZero, Rational, Unsigned, UnsignedRational},
-    operator_aliases::{Compare, Diff, Gcf, Lcm, PartialQuot, Prod, Quot, Sum},
+    operator_aliases::{Compare, Diff, Exp, Gcf, Lcm, PartialQuot, Prod, Quot, Sum},
     private::{
         Internal, InternalMarker, PrivateRationalAdd, PrivateRationalAddOut, PrivateSub,
         PrivateSubOut, Trim, TrimOut,
     },
-    type_operators::{Cmp, Gcd, IntoRational, Lcd, PartialDiv},
+    type_operators::{Cmp, Gcd, IntoRational, Lcd, PartialDiv, Pow},
     uint::{UInt, UTerm},
     Equal, Greater, Less,
 };
@@ -939,6 +939,42 @@ where
     #[inline]
     fn div(self, rhs: PFrac<Ur>) -> Self::Output {
         NFrac(self.0 / rhs.0)
+    }
+}
+
+// ---------------------------------------------------------------------------------------
+// Pow
+
+impl<N: Unsigned, D: Unsigned + NonZero> Pow<U0> for UFrac<N, D> {
+    type Output = UFrac<U1>;
+
+    #[inline]
+    fn powi(self, _rhs: U0) -> Self::Output {
+        UFrac { n: U1::new(), d: U1::new() }
+    }
+}
+
+impl<N: Unsigned, D: Unsigned + NonZero> Pow<Z0> for UFrac<N, D> {
+    type Output = UFrac<U1>;
+
+    #[inline]
+    fn powi(self, _rhs: Z0) -> Self::Output {
+        UFrac { n: U1::new(), d: U1::new() }
+    }
+}
+
+impl<N: Unsigned, D: Unsigned + NonZero, U: Unsigned + NonZero> Pow<PInt<U>> for UFrac<N, D>
+where
+    N: Pow<U>,
+    Exp<N, U>: Unsigned + NonZero,
+    D: Pow<U>,
+    Exp<D, U>: Unsigned + NonZero,
+{
+    type Output = UFrac<Exp<N, U>, Exp<D, U>>;
+
+    #[inline]
+    fn powi(self, rhs: PInt<U>) -> Self::Output {
+        UFrac { n: self.n.powi(rhs.n), d: self.d.powi(rhs.n) }
     }
 }
 
